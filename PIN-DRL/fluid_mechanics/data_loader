@@ -1,0 +1,15 @@
+import adios4dolfinx
+from mpi4py import MPI
+import pathlib
+from ufl import VectorElement, FiniteElement
+from dolfinx.fem import FunctionSpace, Function
+from dolfinx.mesh import GhostMode
+comm = MPI.COMM_WORLD
+mesh = adios4dolfinx.read_mesh(comm=comm, file="flow_around_cylinder.h5", engine="HDF5", ghost_mode=GhostMode.shared_facet)
+v_cg2 = VectorElement("CG", mesh.ufl_cell(), 2)
+s_cg1 = FiniteElement("CG", mesh.ufl_cell(), 1)
+V = FunctionSpace(mesh, v_cg2)
+Q = FunctionSpace(mesh, s_cg1)
+u = Function(V)
+
+adios4dolfinx.read_function(u, filename="flow_around_cylinder.h5")
