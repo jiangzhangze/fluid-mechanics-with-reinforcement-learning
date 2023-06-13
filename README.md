@@ -9,6 +9,6 @@ pytorch
 ```
 ## start training
 ```
-cd PINN_DRL
+cd PIN_DRL
 python3 train_SB3.py
 ```
