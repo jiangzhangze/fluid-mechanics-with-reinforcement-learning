@@ -1,8 +1,7 @@
 import sys
 from envs.active_gym import ActiveControl
-from envs.passive_gym import PassiveControl
 from stable_baselines3 import SAC, PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize, VecCheckNan
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList, BaseCallback, StopTrainingOnRewardThreshold
 from stable_baselines3.common.env_util import make_vec_env
 import stable_baselines3.common.running_mean_std
@@ -18,7 +17,7 @@ import os
 
 models_dir = "models/PPO_ACTIVE"
 model_path = f"{models_dir}/1000.zip"
-logdir = "easy_logs"
+logdir = "wall/1cpu/9_logs"
 
 if not os.path.exists(models_dir):
     os.makedirs(models_dir)
@@ -27,8 +26,9 @@ if not os.path.exists(logdir):
     os.makedirs(logdir)
 
 if __name__ == "__main__":
-    env = make_vec_env(ActiveControl, n_envs=20, vec_env_cls=SubprocVecEnv)
+    env = make_vec_env(ActiveControl, n_envs=1, vec_env_cls=SubprocVecEnv)
     env = VecNormalize(env)
+    env = VecCheckNan(env, raise_exception=True)
     env.reset()
 
     model = PPO("MlpPolicy", env, verbose=2, tensorboard_log=logdir, learning_rate=3e-4, n_steps=64, batch_size=16)
@@ -37,8 +37,8 @@ if __name__ == "__main__":
         save_path="./logs/checkpoints",
         name_prefix="PPO_model",
     )
-    eval_callback = EvalCallback(env, best_model_save_path="./easy_logs/best_model",
-                                 log_path="./easy_logs/evaluations", eval_freq=20,
+    eval_callback = EvalCallback(env, best_model_save_path="./wall/1cpu/9_logs/best_model",
+                                 log_path="./wall/1cpu/9_logs/evaluations", eval_freq=50,
                                  deterministic=True, render=False)
 
 
@@ -49,7 +49,10 @@ if __name__ == "__main__":
         def _on_step(self) -> bool:
             current_step = self.model.num_timesteps
             print("progress:{}/{}".format(current_step, self.model._total_timesteps))
-
+            drags = self.locals["infos"][0]["drags"]
+            lifts = self.locals["infos"][0]["lifts"]
+            print("drags", drags)
+            print("lifts",  lifts)
             return True
 
 
@@ -66,6 +69,6 @@ if __name__ == "__main__":
 
 
     print_callback = MyCallback()
-    callback_list = CallbackList([print_callback, eval_callback, checkpoint_callback])
+    callback_list = CallbackList([print_callback, TensorboardCallback(),  eval_callback])
     env.reset()
-    model.learn(total_timesteps=30000, reset_num_timesteps=False, tb_log_name="PPO_ACTIVE", callback=callback_list)
+    model.learn(total_timesteps=5000, reset_num_timesteps=False, tb_log_name="PPO_ACTIVE", callback=callback_list)
